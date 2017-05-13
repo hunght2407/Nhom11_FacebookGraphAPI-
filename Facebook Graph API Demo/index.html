@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html >
+<head>
+  <meta charset="UTF-8">
+  <title>Lý Thuyết Đồ Thị</title>
+  <link rel='stylesheet prefetch' href='fonts/font.css'>
+  <link rel='stylesheet prefetch' href='css/font-awesome.min.css'>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/customize.css">
+</head>
+
+<body> 
+<!-- Mixins-->
+<div class="pen-title">
+  <h1>Graph API Facebook</h1><span><i class='fa fa-code'></i><a href=''></a></span>
+</div>
+<div class="rerun"><a href="">Nhóm 11</a></div>
+<div class="container">
+  <div class="card"></div>
+  <div class="card">
+    <h1 class="title">Login</h1>
+    <form>
+      <div class="input-container">
+        <input type="text" id="f_id" required="required"/>
+        <label for="#{label}">ID</label>
+        <div class="bar"></div>
+      </div>
+      <div class="input-container">
+        <input type="text" id="f_token" required="required"/>
+        <label for="#{label}">Token</label>
+        <div class="bar"></div>
+      </div>
+      <div class="button-container">
+        <button id="btnsubmit" type="button"><span>Submit</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+    <script src='js/jquery.js'></script>
+    <script src="js/index.js"></script>
+
+    <script type="text/javascript">
+    var graphDataFromFB = [];
+     $('#btnsubmit').click(function(){
+            var id = $('#f_id').val();
+            var token = $('#f_token').val();
+             checkFriends(id,token);
+          });
+
+      function checkFriends(fid,ftoken) {
+        var linkUser = "https://graph.facebook.com/v2.8/"+ fid +"?fields=friends&access_token=" + ftoken;
+        $.getJSON( linkUser, {
+        tags: "mount rainier",
+        tagmode: "any",
+        format: "json"
+        }).done(function(data) {
+            if(typeof(data.friends.data) != 'undefined')
+              { 
+                window.localStorage.setItem("f_id", JSON.stringify(fid)); // Saving
+                window.localStorage.setItem("f_token", JSON.stringify(ftoken)); // Saving
+                var url = "Graph.html";
+                window.location.href = url;
+              }
+            return false;
+          })
+     }
+    </script>
+</body>
+</html>

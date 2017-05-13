@@ -1,0 +1,404 @@
+#include <iostream>
+#include <fstream>
+#include <algorithm>
+#include <vector>
+#include <map>
+using namespace std;
+
+#define AMMAX 512
+
+int gMatrix[AMMAX][AMMAX];
+int gN = 0;
+vector<int> gVector;
+int gold = INT_MAX;
+
+int ReadFile(char *fileName);
+int WriteFile(char *fileName);
+int FindVertexHasLargestEdge(int *idxI, int *idxJ);
+int ConnectAdjacencyVertex();
+int ConnectAdjacencyVertexOfNeighbor();
+void RemoveColoredVertex();
+int ColoringNonAdjVertex(int idxI, int idxJ, int idxCol);
+int GraphColoring();
+void FillVertexCorrespondingColor(map<int,int> colorCorVertexs);
+int AbleToColoring(map<int,int> idxAdjVers, int color);
+
+int FindLowestColorIdx(int idxI, int idxJ);
+void DisableAbleColor(int idxI, int idxJ, int idxCol);
+void RemoveCurVertexFromNeighbors(int idxI, int idxJ, int idxCol);
+
+typedef struct {
+	int value;
+	int value2;
+	int color;
+#define MAX_ABLE_COLOR	24
+	bool ableColor[MAX_ABLE_COLOR];
+	bool isColored;
+	map<int,int> idxAdjVertexs;
+}SudokuMatrix;
+
+SudokuMatrix gSudokuMatrix[9][9];
+
+int ReadFile(char *fileName) {
+	ifstream mFile;
+	int matrix[9][9] = {
+		{ 5, 3, 0, 0, 7, 0, 0, 0, 0 },
+		{ 6, 0, 0, 1, 9, 5, 0, 0, 0 },
+		{ 0, 9, 8, 0, 0, 0, 0, 6, 0 },
+		{ 8, 0, 0, 0, 6, 0, 0, 0, 3 },
+		{ 4, 0, 0, 8, 0, 3, 0, 0, 1 },
+		{ 7, 0, 0, 0, 2, 0, 0, 0, 6 },
+		{ 0, 6, 0, 0, 0, 0, 2, 8, 0 },
+		{ 0, 0, 0, 4, 1, 9, 0, 0, 5 },
+		{ 0, 0, 0, 0, 8, 0, 0, 7, 9 }
+	};
+	int matrix2[9][9] = {
+		{ 5, 3, 4, 6, 7, 8, 9, 1, 2 },
+		{ 6, 7, 2, 1, 9, 5, 3, 4, 8 },
+		{ 1, 9, 8, 3, 4, 2, 5, 6, 7 },
+		{ 8, 5, 9, 7, 6, 1, 4, 2, 3 },
+		{ 4, 2, 6, 8, 5, 3, 7, 9, 1 },
+		{ 7, 1, 3, 9, 2, 4, 8, 5, 6 },
+		{ 9, 6, 1, 5, 3, 7, 2, 8, 4 },
+		{ 2, 8, 7, 4, 1, 9, 6, 3, 5 },
+		{ 3, 4, 5, 2, 8, 6, 1, 7, 9 }
+	};
+	int matrix3[9][9] = {
+	{0, 8, 1, 7, 9, 0, 3, 0, 4},
+	{0, 0, 0, 0, 4, 0, 0, 1, 6},
+	{0, 0, 6, 1, 0, 3, 0, 5, 0},
+	{0, 0, 0, 0, 0, 8, 6, 4, 0},
+	{0, 0, 8, 9, 0, 4, 1, 0, 0},
+	{0, 4, 9, 2, 0, 0, 0, 0, 0},
+	{0, 9, 0, 6, 0, 5, 2, 0, 0},
+	{8, 7, 0, 0, 2, 0, 0, 0, 0},
+	{2, 0, 5, 0, 1, 7, 4, 9, 0}
+	};
+
+	int matrix4[9][9] = {
+	{5, 8, 1, 7, 9, 6, 3, 2, 4},
+	{9, 3, 7, 5, 4, 2, 8, 1, 6},
+	{4, 2, 6, 1, 8, 3, 9, 5, 7},
+	{7, 1, 2, 3, 5, 8, 6, 4, 9},
+	{6, 5, 8, 9, 7, 4, 1, 3, 2},
+	{3, 4, 9, 2, 6, 1, 7, 8, 5},
+	{1, 9, 4, 6, 3, 5, 2, 7, 8},
+	{8, 7, 3, 4, 2, 9, 5, 6, 1},
+	{2, 6, 5, 8, 1, 7, 4, 9, 3}
+	};
+	/*
+	mFile.open(fileName);
+	if (!mFile) {
+		cout << "cannot open file !!!" << endl;
+		return 0;
+	}
+
+	mFile >> gN;
+	gN = 6;
+	*/
+	int count = 1;
+	gN = 9;
+	for (int i = 0; i < gN; i++) {
+		for (int j = 0; j < gN; j++) {
+			//mFile >> gMatrix[i][j];
+			//gMatrix[i][j] = matrix[i][j];
+			gSudokuMatrix[i][j].value = matrix3[i][j];
+			gSudokuMatrix[i][j].value2 = matrix4[i][j];
+			gSudokuMatrix[i][j].isColored == false;
+			for (int k = 0; k < MAX_ABLE_COLOR; k++) {
+				gSudokuMatrix[i][j].ableColor[k] = true;
+			}
+			//cout<<gSudokuMatrix[i][j].value/10 << ":" << gSudokuMatrix[i][j].value%10<< "\t";
+			//gSudokuMatrix[i][j].value = count++;
+			//cout<<gSudokuMatrix[i][j].value<< "\t";
+		}
+		cout<<endl;
+	}
+
+	mFile.close();
+
+
+	return 1;
+}
+
+int WriteFile(char *fileName, int dis) {
+	ofstream mFile;
+	vector<int>::iterator it = gVector.begin();
+
+	mFile.open(fileName);
+	if (!mFile) {
+		cout << "cannot open file !!!" << endl;
+		return 0;
+	}
+
+	mFile << gold << endl;
+
+	if (gold == -1)
+		goto exit_func;
+
+	for (int i = gVector.size() - 1; i >= 0; --i) {
+		mFile << gVector.at(i) << ' ';
+		//cout << it->first << " => " << it->second<< ' ';
+	}
+
+exit_func:
+	mFile.close();
+	return 1;
+}
+
+int ConnectAdjacencyVertex() {
+	int tmp1;
+	int tmp2;
+
+	for (int i = 0; i < gN; i++) {
+		for (int j = 0; j < gN; j++) {
+			for (int k = 0; k < 9; k++) {
+				if (j != k) {
+					gSudokuMatrix[i][j].idxAdjVertexs.insert(pair<int,int>(i*10 + k, gSudokuMatrix[i][k].value));
+				}
+
+				if (i!= k) {
+					gSudokuMatrix[i][j].idxAdjVertexs.insert(pair<int,int>(k*10 + j, gSudokuMatrix[k][j].value));
+				}
+
+				tmp1 = (i/3)*3 + k/3;
+				tmp2 = (j/3)*3 + k%3;
+
+				if (!(i == tmp1 && j == tmp2)) {
+					gSudokuMatrix[i][j].idxAdjVertexs.insert(pair<int,int>(tmp1*10 + tmp2, gSudokuMatrix[tmp1][tmp2].value));
+				}
+			}
+		}
+	}
+	return 1;
+}
+
+int ConnectAdjacencyVertexOfNeighbor() {
+
+	for (int i = 0; i < gN; i++) {
+		for (int j = 0; j < gN; j++) {
+			if (gSudokuMatrix[i][j].value != 0) {
+				for (int k = 0; k < gN; k++) {
+					for (int f = 0; f < gN; f++) {
+						if (gSudokuMatrix[i][j].value != gSudokuMatrix[k][f].value && gSudokuMatrix[k][f].value != 0) {
+							gSudokuMatrix[i][j].idxAdjVertexs.insert(pair<int,int>(k*10 + f, gSudokuMatrix[k][f].value));
+							gSudokuMatrix[k][f].idxAdjVertexs.insert(pair<int,int>(i*10 + j, gSudokuMatrix[i][j].value));
+						}
+					}
+				}
+			}
+		}
+	}
+
+	map<int,int>::iterator it;
+	
+	for (int i = 0; i < gN; i++) {
+		for (int j = 0; j < gN; j++) {
+			if (gSudokuMatrix[i][j].value != 0) {
+				for (int k = 0; k < gN; k++) {
+					for (int f = 0; f < gN; f++) {
+						if ((i != k && j != f) && gSudokuMatrix[i][j].value == gSudokuMatrix[k][f].value) {
+							for (it=gSudokuMatrix[k][f].idxAdjVertexs.begin(); it!=gSudokuMatrix[k][f].idxAdjVertexs.end(); ++it) {
+								if (gSudokuMatrix[i][j].value != it->second) {
+									gSudokuMatrix[i][j].idxAdjVertexs.insert(pair<int,int>(it->first, it->second));
+									gSudokuMatrix[it->first/10][it->first%10].idxAdjVertexs.insert(pair<int,int>(i*10 + j, gSudokuMatrix[i][j].value));
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return 1;
+}
+
+
+void PrintfTest() {
+	cout <<"\n--------------------------------------"<< endl;
+	for (int i = 0; i < gN; i++) {
+		for (int j = 0; j < gN; j++) {
+			cout << gSudokuMatrix[i][j].color << "("<<gSudokuMatrix[i][j].value2<<")" << (((j+1)%3 == 0) ? "\t| ":"\t");
+			//cout << gSudokuMatrix[i][j].idxAdjVertexs.size() /*<< "("<<gSudokuMatrix[i][j].value2<<")" */<< (((j+1)%3 == 0) ? "\t| ":"\t");
+		}
+		cout <<  (((i+1)%3 == 0) ? "\n------------------------------------------------------------------\n":"\n");
+	}
+}
+
+int AbleToColoring(map<int,int> idxAdjVers, int color) {
+	map<int,int>::iterator it;
+	int i, j;
+	for (it=idxAdjVers.begin(); it!=idxAdjVers.end(); ++it) {
+		i = it->first/10;
+		j = it->first%10;
+		if (gSudokuMatrix[i][j].color == color) {
+			return false;
+		}
+	}
+	return true;
+}
+
+int ColoringNonAdjVertex(int idxI, int idxJ, int idxCol) {
+	int var = 0;
+	int idxVertex = 0;
+	int isRun = true;
+	int maxSize = 0;
+	int tmpI, tmpJ;
+
+	while (idxVertex++ < gN*gN && isRun) {
+		isRun = false;
+		maxSize = 0;
+		for (int i = 0; i < gN; i++) {
+			for (int j = 0; j < gN; j++) {
+				if (gSudokuMatrix[i][j].isColored == false 
+					&& gSudokuMatrix[i][j].idxAdjVertexs.count(idxI*10 + idxJ) == 0 
+					&& gSudokuMatrix[idxI][idxJ].idxAdjVertexs.count(i*10 + j) == 0 
+					&& AbleToColoring(gSudokuMatrix[i][j].idxAdjVertexs, idxCol)) 
+				{
+
+					if (gSudokuMatrix[i][j].idxAdjVertexs.size() > maxSize){
+						maxSize = gSudokuMatrix[i][j].idxAdjVertexs.size();
+						tmpI = i;
+						tmpJ = j;
+					}
+					isRun = true;
+				}
+			}
+		}
+
+		if (maxSize != 0){
+			gSudokuMatrix[tmpI][tmpJ].isColored = true;
+			gSudokuMatrix[tmpI][tmpJ].color = FindLowestColorIdx(tmpI,tmpJ);
+			//RemoveColoredVertex();
+			PrintfTest();
+			if (gSudokuMatrix[tmpI][tmpJ].value != 0) {
+				var = gSudokuMatrix[tmpI][tmpJ].value;
+			}
+		}
+	}
+
+	return var;
+}
+
+int FindLowestColorIdx(int idxI, int idxJ) {
+	for (int i = 0; i < MAX_ABLE_COLOR; i++) {
+		if (gSudokuMatrix[idxI][idxJ].ableColor[i] == true) {
+			gSudokuMatrix[idxI][idxJ].ableColor[i] = false;
+			return i + 1;
+		}
+	}
+	return MAX_ABLE_COLOR;
+}
+
+void DisableAbleColor(int idxI, int idxJ, int idxCol) {
+	gSudokuMatrix[idxI][idxJ].ableColor[idxCol - 1] = false;
+}
+
+void RemoveCurVertexFromNeighbors(int idxI, int idxJ, int idxCol) {
+	map<int,int>::iterator it;
+
+	for (int i = 0; i < gN; i++) {
+		for (int j = 0; j < gN; j++) {
+			if (gSudokuMatrix[i][j].idxAdjVertexs.count(idxI*10 + idxJ) > 0) {
+				gSudokuMatrix[i][j].idxAdjVertexs.erase(idxI*10 + idxJ);
+					DisableAbleColor(i, j, idxCol);
+			}
+		}
+	}
+}
+
+void FillVertexCorrespondingColor(map<int,int> colorCorVertexs) {
+	int color, value;
+	for (int i = 0; i < gN; i++) {
+		color = i+1;
+		if (colorCorVertexs.count(color) > 0) {
+			value = colorCorVertexs.find(color)->second;
+			for (int k = 0; k < gN; k++) {
+				for (int f = 0; f < gN; f++) {
+					if (gSudokuMatrix[k][f].color == color) {
+						gSudokuMatrix[k][f].value = value;
+					}
+				}
+			}
+		}
+	}
+}
+
+int FindVertexHasLargestEdge(int *idxI, int *idxJ) {
+	int maxSize = 0;
+	for (int i = 0; i < gN; i++) {
+		for (int j = 0; j < gN; j++) {
+			if (gSudokuMatrix[i][j].idxAdjVertexs.size() > maxSize && gSudokuMatrix[i][j].isColored == false){
+				maxSize = gSudokuMatrix[i][j].idxAdjVertexs.size();
+				*idxI = i;
+				*idxJ = j;
+			}
+		}
+	}
+	return maxSize;
+}
+
+
+int GraphColoring() {
+	int idxVertex = 0;
+	int color = 1;
+	int curI, curJ;
+	int var;
+	map<int,int> colorCorrespondVertexs;
+	//PrintfTest();
+	while (idxVertex++ < gN*gN) {
+		if(FindVertexHasLargestEdge(&curI, &curJ)) {
+			gSudokuMatrix[curI][curJ].isColored = true;
+			gSudokuMatrix[curI][curJ].color = FindLowestColorIdx(curI,curJ);
+			//RemoveColoredVertex();
+			PrintfTest();
+			RemoveCurVertexFromNeighbors(curI,curJ,gSudokuMatrix[curI][curJ].color);
+
+			//var = ColoringNonAdjVertex(curI, curJ, gSudokuMatrix[curI][curJ].color);
+			//RemoveCurVertexFromNeighbors(curI,curJ,gSudokuMatrix[curI][curJ].color);
+			//PrintfTest();
+			//colorCorrespondVertexs.insert(pair<int,int>(color, var));
+			//color++;
+		}
+		else {
+			break;
+		}
+	}
+
+	FillVertexCorrespondingColor(colorCorrespondVertexs);
+
+	for (int i = 0; i < gN; i++) {
+		for (int j = 0; j < gN; j++) {
+			cout << gSudokuMatrix[i][j].color << "\t";
+		}
+		cout << endl;
+	}
+	return (color == 9);
+}
+
+int main(int argc, char *argv[]) {
+	int src, dis;
+	char fileIn[128];
+	char fileOut[128];
+	/*
+	if (argc < 4) {
+		cout << "arguments are wrong !!!" << endl;
+		goto exitapp;
+	}
+
+	sprintf_s(fileIn, "%s", *(++argv));
+	sprintf_s(fileOut, "%s", *(++argv));
+	src = *(++argv)[0] - '0';
+	dis = *(++argv)[0] - '0';*/
+
+	ReadFile(fileIn);
+	ConnectAdjacencyVertex();
+	ConnectAdjacencyVertexOfNeighbor();
+	//cout << src << " " << dis;
+	GraphColoring();
+
+	//WriteFile(fileOut, dis);
+
+exitapp:
+	return 0;
+}

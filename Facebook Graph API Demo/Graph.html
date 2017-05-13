@@ -1,0 +1,362 @@
+<!doctype html>
+<html>
+<head>
+  <title>Facebook API</title>
+	
+  <style type="text/css">
+    body {
+      font: 10pt arial;
+    }
+    #mynetwork {
+      width: 1400px;
+      height: 1000px;
+      border: 1px solid lightgray;
+      background-color:#333333;
+    }
+  </style>
+  <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+  <script type="text/javascript" src="./dist/vis.js"></script>
+  <link href="./dist/vis-network.min.css" rel="stylesheet" type="text/css" />
+
+  <pre id="eventSpan"></pre>
+
+  <script type="text/javascript"> 
+  
+    var DIR = '../img/soft-scraps-icons/';
+	var CONST_EDGEID_MAX = 999999999;
+		
+    var nodes = null;
+	var addedNodeIDs = null;
+    var edges = null;
+    var network = null;
+	var graphDataFromFB = [];
+	var dataFromRootFriend = [];
+	var endId;
+	var gID;
+	var gToken;
+	
+	var rootID = null;
+	var rootName = null;
+	var rootPicture = null;
+	
+	function parseGraphData(){
+		nodes = [];
+		edges = [];
+		addedNodeIDs = [];
+		
+		nodes.push({id: rootID, shape: 'circularImage', image: rootPicture, label: rootName});
+		addedNodeIDs.push(rootID);
+		
+		for(var i = graphDataFromFB.length - 1; i >= graphDataFromFB.length - 10; i--) {
+			nodes.push({id: graphDataFromFB[i].id, shape: 'circularImage', image: graphDataFromFB[i].pictureUrl, label: graphDataFromFB[i].name});
+			addedNodeIDs.push(graphDataFromFB[i].id);
+			edges.push({from: rootID, to: graphDataFromFB[i].id});
+			
+		}
+		endId = graphDataFromFB[i].id;
+	}
+	
+	function loadData() {
+		var linkUser = "https://graph.facebook.com/v2.8/" + gID + "?fields=id,name,picture,friends&access_token=" + gToken;
+		$.getJSON( linkUser, {
+		tags: "mount rainier",
+		tagmode: "any",
+		format: "json"
+		})
+		.done(function( data ) {
+			// ---
+			rootID = data.id;
+			rootName = data.name;
+			rootPicture = data.picture.data.url;
+			// ---
+			data.friends.data.forEach(function(element) {
+				var linkFriend = "https://graph.facebook.com/v2.8/" + element.id + "?fields=id,name,picture&access_token=" + gToken;
+				$.getJSON( linkFriend, {
+				tags: "mount rainier",
+				tagmode: "any",
+				format: "json"
+				})
+				.done(function( data2 ) {
+					graphDataFromFB.push({ id: data2.id, name: data2.name, pictureUrl: data2.picture.data.url});
+				});
+			})
+		});
+	}
+	
+	// - finding the path of edges list --- start -
+	function GetAdjacentEdgeID(pairEdge, id) {
+		if (pairEdge.from == id) {
+			return pairEdge.to;
+		}
+		else if (pairEdge.to == id) {
+			return pairEdge.from;
+		}
+		return CONST_EDGEID_MAX;
+	}
+	
+	function CheckedAllEdges(adjEdgesList) {
+		for(var i = 0; i < adjEdgesList.length; i++)	{
+			if (adjEdgesList[i].status == 1) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	function FindPathInEdgesListExtend(startID, desID, adjEdgesList) {
+		var adjEdgesListIndex = [];
+		var nextID;
+		var tmp_nextID;
+		
+		for(var i = 0; i < adjEdgesList.length; i++) {
+			nextID = GetAdjacentEdgeID(adjEdgesList[i], startID);
+			if (nextID == CONST_EDGEID_MAX | adjEdgesList[i].status == 0) {
+				continue;
+			}
+			adjEdgesListIndex.push(i);
+			adjEdgesList[i].status = 0;
+			
+			for(var j = 0; CheckedAllEdges(adjEdgesList) && adjEdgesListIndex.length != 0 ; j++) {
+				tmp_nextID = GetAdjacentEdgeID(adjEdgesList[j], nextID);
+				if (tmp_nextID == desID) { 
+					adjEdgesListIndex.push(j);
+					return adjEdgesListIndex;
+				}
+				if (j >= adjEdgesList.length - 1) {
+					nextID = GetAdjacentEdgeID(adjEdgesList[adjEdgesListIndex.pop()], nextID);
+					j = -1;
+					continue;
+				}
+				if (tmp_nextID != CONST_EDGEID_MAX && adjEdgesList[j].status != 0) {
+					nextID = tmp_nextID;
+					adjEdgesListIndex.push(j);
+					adjEdgesList[j].status = 0;
+					j = -1;
+				}
+			}
+		}
+	}
+	
+	function FindPathInEdgesList(startID, desID, edgesList) {
+		var tmpAdjEgsList = [];
+		var adjEgsIdx = [];
+		var connectedNodesList = [];
+
+		for(var i = 0; i < edgesList.length; i++) {
+			tmpAdjEgsList.push({from: edgesList[i].from, to: edgesList[i].to, status: 1})
+			if (GetAdjacentEdgeID(edgesList[i], startID) == desID) {
+				connectedNodesList.push(edgesList[i].from);
+				connectedNodesList.push(edgesList[i].to);
+				return connectedNodesList;
+			}
+		}
+		
+		adjEgsIdx = FindPathInEdgesListExtend(startID, desID, tmpAdjEgsList);
+		
+		for(var i = 1; i < adjEgsIdx.length; i++){
+			if (tmpAdjEgsList[adjEgsIdx[i - 1]].from == tmpAdjEgsList[adjEgsIdx[i]].from |
+				tmpAdjEgsList[adjEgsIdx[i - 1]].from == tmpAdjEgsList[adjEgsIdx[i]].to ) {
+					connectedNodesList.push(tmpAdjEgsList[adjEgsIdx[i - 1]].to);
+			}
+			else {
+				connectedNodesList.push(tmpAdjEgsList[adjEgsIdx[i - 1]].from);
+			}
+		}
+		
+		if (tmpAdjEgsList[adjEgsIdx[adjEgsIdx.length - 1]].from == tmpAdjEgsList[adjEgsIdx[adjEgsIdx.length - 2]].from |
+			tmpAdjEgsList[adjEgsIdx[adjEgsIdx.length - 1]].from == tmpAdjEgsList[adjEgsIdx[adjEgsIdx.length - 2]].to ) {
+			connectedNodesList.push(tmpAdjEgsList[adjEgsIdx[adjEgsIdx.length - 1]].from);
+			connectedNodesList.push(tmpAdjEgsList[adjEgsIdx[adjEgsIdx.length - 1]].to);
+		}
+		else {
+			connectedNodesList.push(tmpAdjEgsList[adjEgsIdx[adjEgsIdx.length - 1]].to);
+			connectedNodesList.push(tmpAdjEgsList[adjEgsIdx[adjEgsIdx.length - 1]].from);
+		}
+		//console.log("ahaha:",connectedNodesList);
+		return connectedNodesList;
+	}
+	// - finding the path of edges list --- end -
+	var selectedEdges = [];
+	function SelectEdge(node1, node2) {
+		var edgesOfNode1 = null;
+		var edgesOfNode2 = null;
+		
+		edgesOfNode1 = network.getConnectedEdges(node1);
+		edgesOfNode2 = network.getConnectedEdges(node2);
+
+		for (var i = 0; i < edgesOfNode1.length; i++) {
+			for (var j = 0; j < edgesOfNode2.length; j++) {
+				if (edgesOfNode1[i] == edgesOfNode2[j]) {
+					console.log('ff-',edgesOfNode1[i]);
+					selectedEdges.push(edgesOfNode1[i]);
+					network.clustering.updateEdge(edgesOfNode1[i], {color : '#aa0000'});
+					return true;
+				}	
+			}
+		}
+		return false;
+	}
+	
+	var clickCount = 0;
+	var friendID1;
+	var friendID2;
+	var connectedNodes;
+    // Called when the Visualization API is loaded.
+    function draw() {
+		// create a network
+		parseGraphData();
+
+		var container = document.getElementById('mynetwork');
+		
+		var data = {
+			nodes: nodes,
+			edges: edges
+		};
+		
+		var options = {
+			autoResize: false,
+			height: '100%',
+			width: '100%',
+			nodes: {
+				borderWidth:4,
+				size:30,
+				color: {
+					border: '#222222',
+					background: '#666666'
+				},
+				font:{color:'#eeeeee'}
+			},
+			edges: {
+				color: 'lightgray'
+			},
+			
+			interaction: {
+				hover: true
+			}
+		};
+		network = new vis.Network(container, data, options);
+		
+		// - Handle events ---
+		network.on("click", function (params) {
+		});
+		network.on("doubleClick", function (params) {
+			GetFriendListById(params.nodes[0]);
+			AddFriendListById(params.nodes[0]);
+		});
+		network.on("selectNode", function (params) {
+			console.log('selectNode Event:', params.nodes[0]);
+			connectedNodes = [];
+			
+			if (clickCount == 0) {
+				clickCount++;
+				friendID1 = params.nodes[0];
+			}
+			else {
+				clickCount = 0;
+				friendID2 = params.nodes[0];
+				
+				connectedNodes = FindPathInEdgesList(friendID1,friendID2, edges);
+				//console.log('connectedNodes:',connectedNodes);
+				network.setSelection({nodes: connectedNodes},{unselectAll: true,highlightEdges: false});
+				console.log('nodes--:',connectedNodes);
+				for (var i = 0; i < selectedEdges.length; i++) {
+					network.clustering.updateEdge(selectedEdges[i], {color : 'lightgray'});
+				}
+				selectedEdges = [];
+				for (var i = 1; i < connectedNodes.length; i++) {
+					SelectEdge(connectedNodes[i - 1], connectedNodes[i]);
+				}
+			}
+		});
+    }
+	
+	function isAddedNode(id) {
+		for(var i = 0; i < addedNodeIDs.length; i++) {
+			if (addedNodeIDs[i] == id )
+				return true;
+		}
+		return false;
+	}
+	
+	function GetFriendListById(friendID){
+		console.log('----GetFriendListById:', friendID);
+		var rootLinkFriend = "https://graph.facebook.com/v2.8/" + friendID + "?fields=friends&access_token=" + gToken;
+		var curNodeLen = nodes.length;
+		
+		//console.log(friendID);
+		$.getJSON( rootLinkFriend, {
+		tags: "mount rainier",
+		tagmode: "any",
+		format: "json"
+		})
+		.done(function( data ) {
+			data.friends.data.forEach(function(element) {
+				var linkFriends = "https://graph.facebook.com/v2.8/" + element.id + "?fields=id,name,picture&access_token=" + gToken;
+				$.getJSON( linkFriends, {
+				tags: "mount rainier",
+				tagmode: "any",
+				format: "json"
+				})
+				.done(function( data2 ) {
+					dataFromRootFriend.push({ id: data2.id, name: data2.name, pictureUrl: data2.picture.data.url});
+				});
+			})
+		});
+    }
+	
+	function AddFriendListById(friendID) {
+		for(var i = dataFromRootFriend.length - 1; i >= graphDataFromFB.length - 10 && i > 0; i--) {
+			if (!isAddedNode(dataFromRootFriend[i].id)) {
+				nodes.push({id: dataFromRootFriend[i].id, shape: 'circularImage', image: dataFromRootFriend[i].pictureUrl, label: dataFromRootFriend[i].name});
+				addedNodeIDs.push(dataFromRootFriend[i].id);
+				edges.push({from: friendID, to: dataFromRootFriend[i].id});
+				//console.log('get ffffbbb:', dataFromRootFriend[i].id);
+			}
+			else {
+				//console.log('co roi:', dataFromRootFriend[i].id);
+				//edges.push({from: friendID, to: dataFromRootFriend[i].id});
+			}
+		}
+		dataFromRootFriend = [];
+		network.setData({nodes: nodes, edges: edges});
+    }
+	
+    function test(){
+		for(var i = 0; i < dataFromRootFriend.length; i++) {
+			//document.write(graphDataFromFB[i].name);
+			nodes.push({id: dataFromRootFriend[i].id, shape: 'circularImage', image: dataFromRootFriend[i].pictureUrl, label: dataFromRootFriend[i].name});
+			edges.push({from: endId, to: dataFromRootFriend[i].id});
+		}
+	
+		network.setData({nodes: nodes, edges: edges});
+    }
+
+	function test3(){
+	//nodes.clear();
+		for(var i = 17; i < 22; i++) {
+			//document.write(graphDataFromFB[i].name);
+			if (!isAddedNode(graphDataFromFB[i].id))
+				nodes.push({id: graphDataFromFB[i].id, shape: 'circularImage', image: graphDataFromFB[i].pictureUrl, label: graphDataFromFB[i].name});
+			edges.push({from: endId, to: graphDataFromFB[i].id});
+		}
+		network.setData({nodes: nodes, edges: edges});
+    }
+	
+	$(document).ready(function() {
+	   gToken = JSON.parse(window.localStorage.getItem("f_token")); // Retrieving
+	   gID = JSON.parse(window.localStorage.getItem("f_id")); // Retrieving
+	   console.log(gID);
+	   console.log(gToken);
+	   loadData();
+	   //draw();
+	});
+
+  </script>
+  
+</head>
+
+<body">
+<button onclick="draw()">Load Graph</button>
+<div id="mynetwork"></div>
+</body>
+</html>
